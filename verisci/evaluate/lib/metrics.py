@@ -11,7 +11,7 @@ import pandas as pd
 
 
 # Cap on how many abstract sentences can be returned.
-MAX_ABSTRACT_SENTS = 3
+MAX_ABSTRACT_SENTS = 7
 
 
 def compute_f1(counts, difficulty=None):

@@ -31,6 +31,24 @@ class SciFactRationaleSelectionDataset(Dataset):
         self.samples = []
         corpus = {doc['doc_id']: doc for doc in jsonlines.open(corpus)}
         for claim in jsonlines.open(claims):
+            #print("evidence",claim['evidence'])
+            #print("docs:",claim["cited_doc_ids"])
+            for doc_id in claim["cited_doc_ids"]:
+                doc = corpus[int(doc_id)]
+                doc_id = str(doc_id)
+                if doc_id in claim['evidence']:
+                    evidence = claim['evidence'][doc_id]
+                    evidence_sentence_idx = {s for es in evidence for s in es['sentences']}
+                else:
+                    evidence_sentence_idx = {}
+                for i, sentence in enumerate(doc['abstract']):
+                    self.samples.append({
+                        'claim': claim['claim'],
+                        'sentence': sentence,
+                        'evidence': i in evidence_sentence_idx
+                    })
+                
+            """
             for doc_id, evidence in claim['evidence'].items():
                 doc = corpus[int(doc_id)]
                 evidence_sentence_idx = {s for es in evidence for s in es['sentences']}
@@ -40,6 +58,7 @@ class SciFactRationaleSelectionDataset(Dataset):
                         'sentence': sentence,
                         'evidence': i in evidence_sentence_idx
                     })
+            """
 
     def __len__(self):
         return len(self.samples)
@@ -53,8 +72,12 @@ devset = SciFactRationaleSelectionDataset(args.corpus, args.claim_dev)
 
 tokenizer = AutoTokenizer.from_pretrained(args.model)
 model = AutoModelForSequenceClassification.from_pretrained(args.model).to(device)
+if "roberta" in args.model:
+    bert = model.roberta
+else:
+    bert = model.bert
 optimizer = torch.optim.Adam([
-    {'params': model.roberta.parameters(), 'lr': args.lr_base},  # if using non-roberta model, change the base param path.
+    {'params': bert.parameters(), 'lr': args.lr_base},  # if using non-roberta model, change the base param path.
     {'params': model.classifier.parameters(), 'lr': args.lr_linear}
 ])
 scheduler = get_cosine_schedule_with_warmup(optimizer, 0, 20)
